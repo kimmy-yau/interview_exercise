@@ -79,6 +79,16 @@ export class UserJoinedConversationEvent implements BaseEventType {
   constructor(public message: User) {}
 }
 
+export class AddTagMessageEvent implements BaseEventType {
+  public name = 'add-tag-message';
+  constructor(public message: {messageId: ObjectId, tag:string }) {}
+}
+
+export class RemoveTagMessageEvent implements BaseEventType {
+  public name = 'remove-tag-message';
+  constructor(public message: {messageId: ObjectId, tag:string }) {}
+}
+
 type EventType =
   | SendMessageEvent
   | DeleteMessageEvent
@@ -87,7 +97,9 @@ type EventType =
   | PinMessageEvent
   | UnpinMessageEvent
   | UserLeftConversationEvent
-  | UserJoinedConversationEvent;
+  | UserJoinedConversationEvent
+  | AddTagMessageEvent
+  | RemoveTagMessageEvent;
 
 @Injectable()
 export class ConversationChannel extends Channel<EventType> {

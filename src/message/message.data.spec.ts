@@ -83,6 +83,7 @@ describe('MessageData', () => {
           conversation: { id: conversationId.toHexString() },
           likesCount: 0,
           sender: { id: senderId.toHexString() },
+          tags: [],
         }
       );
 

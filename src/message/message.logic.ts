@@ -13,6 +13,7 @@ import {
   ResolveMessageDto,
   ReactionDto,
   PollOptionDto,
+  TagMessageDto,
 } from './models/message.dto';
 import { MessageData } from './message.data';
 import { IAuthenticatedUser } from '../authentication/jwt.strategy';
@@ -29,6 +30,7 @@ import {
   UnresolveMessageEvent,
   ReactedMessageEvent,
   UnReactedMessageEvent,
+  TagMessageEvent,
 } from '../conversation/conversation-channel.socket';
 import { UserService } from '../user/user.service';
 import { ConversationData } from '../conversation/conversation.data';
@@ -282,6 +284,7 @@ export class MessageLogic implements IMessageLogic {
   async getChatConversationMessages(
     getMessageDto: GetMessageDto,
     authenticatedUser: IAuthenticatedUser,
+    tag:string,
   ): Promise<PaginatedChatMessages> {
     if (
       !(await this.permissions.conversationPermissions({
@@ -296,7 +299,7 @@ export class MessageLogic implements IMessageLogic {
     }
 
     const [paginatedChatMessages, conversation] = await Promise.all([
-      this.messageData.getChatConversationMessages(getMessageDto),
+      this.messageData.getChatConversationMessages(getMessageDto, tag),
       this.conversationLogic.getConversation(
         String(getMessageDto.conversationId),
         authenticatedUser,
@@ -696,5 +699,59 @@ export class MessageLogic implements IMessageLogic {
     }
 
     return pollOption;
+  }
+  
+  async addTag(
+    tagged: TagMessageDto,
+    authenticatedUser: IAuthenticatedUser,
+  ) {
+    await this.throwForbiddenErrorIfNotAuthorized(
+      authenticatedUser,
+      tagged.messageId,
+      Action.updateMessage,
+    );
+    
+  	const message = await this.messageData.addTag(
+      tagged.messageId,
+      tagged.tag,
+    );
+
+    const messageEvent = new AddTagMessageEvent({
+      tagged.messageId,
+      tagged.tag,
+    });
+    this.conversationChannel.send(
+      messageEvent,
+      tagged.conversationId.toHexString(),
+    );
+
+    return message;
+  }
+  
+  async removeTag(
+    tagged: TagMessageDto,
+    authenticatedUser: IAuthenticatedUser,
+  ) {
+    await this.throwForbiddenErrorIfNotAuthorized(
+      authenticatedUser,
+      tagged.messageId,
+      Action.updateMessage,
+    );
+    
+  	const message = await this.messageData.removeTag(
+      tagged.messageId,
+      tagged.tag,
+    );
+
+    const messageEvent = new RemoveTagMessageEvent({
+      tagged.messageId,
+      tagged.tag,
+    });
+    this.conversationChannel.send(
+      messageEvent,
+      tagged.conversationId.toHexString(),
+    );
+
+    return message;
   }
 }

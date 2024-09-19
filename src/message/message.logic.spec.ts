@@ -8,6 +8,7 @@ import {
   GifType,
   MessageDto,
   PollDto,
+  TagMessageDto,
 } from './models/message.dto';
 import {
   ConversationChannel,
@@ -19,6 +20,8 @@ import {
   UnReactedMessageEvent,
   UnlikeMessageEvent,
   UnresolveMessageEvent,
+  AddTagMessageEvent,
+  RemoveTagMessageEvent,
 } from '../conversation/conversation-channel.socket';
 import { PermissionsService } from '../permissions/permissions.service';
 import { ObjectID, ObjectId } from 'mongodb';
@@ -116,6 +119,9 @@ const mockPollContentWithOptionBurgerSelected = {
   },
 };
 
+const tagsList = new Set<String>();
+tagsList.add("Test");
+
 const replyMessageModel: ChatMessageModel = {
   id: new ObjectID(replyMessageId),
   text: 'test',
@@ -132,6 +138,7 @@ const replyMessageModel: ChatMessageModel = {
   resolved: false,
   likes: [],
   likesCount: 0,
+  tags: tagsList,
 };
 
 const USER_BLOCK_DTO = {
@@ -162,6 +169,7 @@ describe('MessageLogic', () => {
     resolved: false,
     likes: [],
     likesCount: 0,
+    tags: tagsList,
   };
 
   const mockGifMessage = {
@@ -321,6 +329,7 @@ describe('MessageLogic', () => {
 
     getChatConversationMessages(
       data: GetMessageDto,
+      tag : string,
     ): Promise<PaginatedChatMessages> {
       const allMessages = [
         {
@@ -338,6 +347,7 @@ describe('MessageLogic', () => {
           likes: [],
           likesCount: 0,
           isSenderBlocked: false,
+          tags:[],
         },
 
         {
@@ -354,6 +364,7 @@ describe('MessageLogic', () => {
           likes: [],
           likesCount: 0,
           isSenderBlocked: false,
+          tags:[],
         },
       ];
 
@@ -382,6 +393,7 @@ describe('MessageLogic', () => {
         deleted: false,
         resolved: false,
         likes: [],
+        tags:[],
       };
     }
 
@@ -409,6 +421,18 @@ describe('MessageLogic', () => {
     }
 
     removeVote(messageId: ObjectID, userId: ObjectID, option: string) {
+      return Promise.resolve(
+        this.getMockMessage(messageId.toHexString(), userId.toHexString()),
+      );
+    }
+    
+    addTag(tag: string, messageId: ObjectID) {
+      return Promise.resolve(
+        this.getMockMessage(messageId.toHexString(), userId.toHexString()),
+      );
+    }
+    
+    removeTag(tag: string, messageId: ObjectID) {
       return Promise.resolve(
         this.getMockMessage(messageId.toHexString(), userId.toHexString()),
       );
@@ -1234,6 +1258,8 @@ describe('MessageLogic', () => {
       );
       expect(messages.messages[1].isSenderBlocked).toEqual(true);
     });
+    
+    //TODO: Test for returning all chat conversations matching with tag
   });
 
   describe('react / un-react', () => {
@@ -1446,4 +1472,43 @@ describe('MessageLogic', () => {
       ).rejects.toEqual(expectedError);
     });
   });
+  
+  describe('addTag', () => {
+    it('should be defined', () => {
+      expect(messageLogic.addTag).toBeDefined();
+    });
+
+    it('should be able to add tag', async () => {
+      jest
+        .spyOn(messageData, 'getMessage')
+        .mockReturnValue(Promise.resolve(mockCreatedMessage));
+      jest.spyOn(messageData, 'addTag');
+
+      await messageLogic.addTag(
+        {
+          messageId,
+          tag: 'Food',
+        },
+        validUser,
+      );
+      expect(messageData.addTag).toHaveBeenCalledWith(
+        {
+          messageId,
+          tag: 'Food',
+        },
+        validUser,
+      );
+      expect(mockCreatedMessage.tags.size()).toEqual(2);
+      //TODO: Check it contains exactly "Test" and "Food" in any order (due to Set being unordered)
+      
+    });
+    
+    //TODO: Check when adding tag "Food" to a message where tags are empty. Check that the tags contain exactly "Food".
+    
+    //TODO: Check when adding tag "Food" to a message where "Food" tag already exist. Check that the tags contain exactly "Food".
+  });
+  // Delete Tag  
+  //TODO: Check when removing tag "Food" to a message. Check that the tags does not contain "Food".
+  
+  //TODO: Check when removing tag "Food" to a message. Check that the tags does not contain "Food". Check that it contains other tags.
 });

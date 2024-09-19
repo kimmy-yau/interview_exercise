@@ -45,6 +45,7 @@ export class MessageData {
 
   async getChatConversationMessages(
     data: GetMessageDto,
+    tag: string,
   ): Promise<PaginatedChatMessages> {
     let hasMore = false;
 
@@ -60,6 +61,10 @@ export class MessageData {
 
     if (data.offsetId) {
       query['_id'] = { $lt: data.offsetId };
+    }
+    
+    if(tag) {
+      query['tags'] = { $in: tag };
     }
 
     const result: ChatMessageDocument[] = await this.chatMessageModel
@@ -367,5 +372,39 @@ export class MessageData {
     }
 
     return chatMessageToObject(updatedResult);
+  }
+  
+  async addTag(messageId: ObjectID, tag: string,): Promise<ChatMessage> {
+    const query = { _id: messageId };
+    const updateDocument = {
+      $addToSet: { 'tags.$': tag },
+    };
+    const updatedTagged = await this.chatMessageModel.findOneAndUpdate(
+      query,
+      updateDocument,
+      {
+        new: true,
+        returnOriginal: false,
+      },
+    );
+    if (!updatedTagged) throw new Error('The message does not exist');
+    return chatMessageToObject(updatedTagged);
+  }
+  
+  async removeTag(messageId: ObjectID, tag: string,): Promise<ChatMessage> {
+    const query = { _id: messageId };
+    const updateDocument = {
+      $pull: { 'tags.$': tag },
+    };
+    const updatedTagged = await this.chatMessageModel.findOneAndUpdate(
+      query,
+      updateDocument,
+      {
+        new: true,
+        returnOriginal: false,
+      },
+    );
+    if (!updatedTagged) throw new Error('The message does not exist');
+    return chatMessageToObject(updatedTagged);
   }
 }
